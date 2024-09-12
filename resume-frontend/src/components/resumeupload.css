@@ -1,0 +1,141 @@
+.resume-upload-container {
+  max-width: 500px;
+  margin: 40px auto;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.dropzone:hover {
+  background-color: #f9f9f9;
+}
+
+.dropzone-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-icon {
+  width: 40px;
+  height: 40px;
+  color: #888;
+}
+
+.file-types {
+  font-size: 12px;
+  color: #666;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.file-icon {
+  width: 16px;
+  height: 16px;
+  color: #888;
+}
+
+.submit-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.submit-button:hover:not(.disabled) {
+  background-color: #0056b3;
+}
+
+.submit-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.alert.error {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.alert-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.result-container {
+  background-color: #f0fdf4;
+  border: 1px solid #10b981;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.check-icon {
+  width: 20px;
+  height: 20px;
+  color: #10b981;
+}
+
+.result-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 14px;
+  color: #333;
+}
+
+.bold {
+  font-weight: bold;
+}
