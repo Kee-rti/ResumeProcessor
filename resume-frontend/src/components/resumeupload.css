@@ -1,141 +1,41 @@
 .resume-upload-container {
-  max-width: 500px;
+  max-width: 760px;
   margin: 40px auto;
-  padding: 20px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.08);
 }
-
-.title {
-  font-size: 24px;
-  font-weight: bold;
-  text-align: center;
-  color: #333;
-  margin-bottom: 20px;
+.title { font-size: 26px; text-align: center; color: #222; margin-bottom: 22px; }
+.upload-form, .chat-form { display: flex; flex-direction: column; gap: 16px; }
+.dropzone { border: 2px dashed #bbb; border-radius: 8px; padding: 28px; text-align: center; cursor: pointer; }
+.dropzone:hover { background: #fafafa; }
+.dropzone-label { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.upload-icon { width: 40px; height: 40px; color: #777; }
+.file-types { font-size: 12px; color: #666; }
+.file-input { display: none; }
+.file-info { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.file-icon { width: 18px; height: 18px; color: #777; }
+.submit-button, .send-button, .reset-button {
+  border: 0; border-radius: 7px; cursor: pointer;
 }
-
-.upload-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.dropzone {
-  border: 2px dashed #ccc;
-  border-radius: 4px;
-  padding: 20px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.dropzone:hover {
-  background-color: #f9f9f9;
-}
-
-.dropzone-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.upload-icon {
-  width: 40px;
-  height: 40px;
-  color: #888;
-}
-
-.file-types {
-  font-size: 12px;
-  color: #666;
-}
-
-.file-input {
-  display: none;
-}
-
-.file-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: #333;
-}
-
-.file-icon {
-  width: 16px;
-  height: 16px;
-  color: #888;
-}
-
-.submit-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.3s;
-}
-
-.submit-button:hover:not(.disabled) {
-  background-color: #0056b3;
-}
-
-.submit-button.disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.alert {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 4px;
-  margin-top: 20px;
-}
-
-.alert.error {
-  background-color: #fee2e2;
-  color: #dc2626;
-}
-
-.alert-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.result-container {
-  background-color: #f0fdf4;
-  border: 1px solid #10b981;
-  border-radius: 4px;
-  padding: 15px;
-  margin-top: 20px;
-}
-
-.result-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.check-icon {
-  width: 20px;
-  height: 20px;
-  color: #10b981;
-}
-
-.result-content {
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 14px;
-  color: #333;
-}
-
-.bold {
-  font-weight: bold;
-}
+.submit-button { background: #1677ff; color: #fff; padding: 12px 20px; font-size: 16px; }
+.submit-button.disabled, .send-button:disabled { background: #ccc; cursor: not-allowed; }
+.session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.reset-button { background: #fee2e2; color: #b91c1c; padding: 8px; }
+.chat-window { min-height: 360px; max-height: 520px; overflow-y: auto; padding: 14px; background: #f7f8fa; border-radius: 8px; }
+.empty-chat { color: #666; padding: 20px; text-align: center; }
+.message { max-width: 88%; padding: 12px 14px; margin: 10px 0; border-radius: 10px; }
+.message.user { margin-left: auto; background: #e7f0ff; }
+.message.assistant { margin-right: auto; background: #fff; border: 1px solid #e4e4e4; }
+.message p { white-space: pre-wrap; margin: 6px 0 0; line-height: 1.5; }
+.chat-form { flex-direction: row; margin-top: 14px; }
+.chat-form input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 7px; font-size: 15px; }
+.send-button { width: 46px; background: #1677ff; color: #fff; display: grid; place-items: center; }
+.sources { margin-top: 10px; font-size: 12px; }
+.source { margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
+.source p { font-size: 12px; }
+.alert { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 7px; margin-top: 16px; }
+.alert.error { background: #fee2e2; color: #b91c1c; }
+.alert-icon { width: 20px; height: 20px; }
+.bold { font-weight: 700; }
