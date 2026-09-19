@@ -1,55 +1,72 @@
-import pdfplumber
 import logging
+import tempfile
 from pathlib import Path
 from typing import Optional
 
-logging.basicConfig(level=logging.INFO)
+import pdfplumber
+
 logger = logging.getLogger(__name__)
 
-class ResumeExtractor:
-    def __init__(self):
-        pass
 
-    def extract_text(self, pdf_path: str | Path) -> Optional[str]:
-        """
-        Extracts raw text from a PDF or DOCX resume.
-        """
-        path = Path(pdf_path)
+class ResumeExtractor:
+    def extract_text(self, file_path: str | Path) -> Optional[str]:
+        path = Path(file_path)
         if not path.exists():
-            logger.error(f"File not found: {path}")
+            logger.error("File not found: %s", path)
             return None
-        
-        if path.suffix.lower() == '.pdf':
+
+        if path.suffix.lower() == ".pdf":
             return self._extract_from_pdf(path)
-        elif path.suffix.lower() == '.docx':
+        if path.suffix.lower() == ".docx":
             return self._extract_from_docx(path)
-        else:
-            logger.error(f"Unsupported file format: {path.suffix}. Expected .pdf or .docx")
+
+        logger.error("Unsupported file format: %s", path.suffix)
+        return None
+
+    def extract_uploaded_file(self, uploaded_file) -> Optional[str]:
+        """Extract text from a Django UploadedFile without persisting it."""
+        suffix = Path(uploaded_file.name).suffix.lower()
+        if suffix not in {".pdf", ".docx"}:
             return None
+
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                for chunk in uploaded_file.chunks():
+                    tmp.write(chunk)
+                temp_path = Path(tmp.name)
+
+            return self.extract_text(temp_path)
+        finally:
+            if temp_path and temp_path.exists():
+                temp_path.unlink(missing_ok=True)
 
     def _extract_from_pdf(self, path: Path) -> Optional[str]:
         extracted_text = []
         try:
             with pdfplumber.open(path) as pdf:
-                for i, page in enumerate(pdf.pages):
+                for page in pdf.pages:
                     text = page.extract_text()
                     if text:
                         extracted_text.append(text)
-            
+
             full_text = "\n".join(extracted_text)
-            logger.info(f"Successfully extracted {len(full_text)} characters from {path.name}")
+            logger.info("Extracted %d characters from %s", len(full_text), path.name)
             return full_text
-        except Exception as e:
-            logger.error(f"Error extracting text from {path.name}: {e}")
+        except Exception:
+            logger.exception("Error extracting PDF %s", path.name)
             return None
 
     def _extract_from_docx(self, path: Path) -> Optional[str]:
         try:
             import docx
+
             doc = docx.Document(path)
-            full_text = "\n".join([para.text for para in doc.paragraphs])
-            logger.info(f"Successfully extracted {len(full_text)} characters from {path.name}")
+            full_text = "\n".join(
+                paragraph.text for paragraph in doc.paragraphs if paragraph.text
+            )
+            logger.info("Extracted %d characters from %s", len(full_text), path.name)
             return full_text
-        except Exception as e:
-            logger.error(f"Error extracting text from {path.name}: {e}")
+        except Exception:
+            logger.exception("Error extracting DOCX %s", path.name)
             return None

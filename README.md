@@ -1,134 +1,193 @@
-# Resume Information Extractor
+# Resume Processor + RAG Chatbot
 
-## Overview
+A Django REST + React resume application that now includes an explicit, first-principles RAG pipeline.
 
-Resume Information Extractor is a sophisticated solution designed to extract critical information from resumes, including names, email addresses, and phone numbers. This tool leverages advanced NLP techniques to process and analyze resume content, providing a reliable and accurate extraction service. It is built with a Django backend for processing and a React frontend for a seamless user experience.
+## Architecture
 
-## Features
+```
+React
+  ↓ HTTP
+Django REST API
+  ↓
+Resume extraction
+  ↓
+Chunking
+  ↓
+Hugging Face / sentence-transformers embeddings
+  ↓
+Per-session NumPy vector store
+  ↓
+Top-k retrieval
+  ↓
+RAG prompt + short chat history
+  ↓
+Gemini API
+  ↓
+Grounded answer + retrieved sources
+```
 
-- **Text Extraction**: Handles various resume formats, including PDF and DOCX.
-- **Information Extraction**: Identifies and extracts key details such as name, email, and phone number.
-- **User-Friendly Interface**: A React-based frontend that allows users to upload resumes and view extracted information effortlessly.
+FAISS is intentionally not used in V1. The NumPy vector store makes the retrieval math visible and easy to learn. FAISS can replace it later behind the same vector-store interface.
 
-## Technologies Used
+## RAG lifecycle
 
-- **Backend**: Django, Django REST Framework
-- **Frontend**: React
-- **NLP**: PyPDF2, pdfplumber, docx2txt, pyresparser, spacy
-- **Database**: PostgreSQL
-- **Logging**: Python logging
+### Indexing
 
-## Installation
+When a resume is uploaded:
 
-### Prerequisites
+```
+PDF/DOCX
+  → text extraction
+  → chunks
+  → embeddings
+  → session-specific vector store
+```
 
-- Python 3.12 or higher
-- Node.js and npm
-- PostgreSQL
+The uploaded file itself is written only to a temporary file during extraction and then deleted.
 
-### Backend Setup
+### Querying
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Kee-rti/ResumeProcessor.git
-   cd ResumeProcessor
-   ```
+For every question:
 
-2. Create a virtual environment and activate it:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
+```
+question
+  → question embedding
+  → cosine similarity against indexed chunks
+  → top-k chunks
+  → Gemini prompt
+  → answer
+```
 
-3. Install backend dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+The API also returns the retrieved chunks and similarity scores so the retrieval step can be inspected while learning/debugging.
 
-4. Apply database migrations:
-   ```bash
-   python manage.py migrate
-   ```
+## Session model
 
-5. Start the Django server:
-   ```bash
-   python manage.py runserver
-   ```
+V1 uses an in-memory, process-local session registry.
 
-### Frontend Setup
+Each session owns:
+- uploaded resume identity
+- its own vector store
+- chunk count
+- short chat history
 
-1. Navigate to the resume-frontend directory:
-   ```bash
-   cd resume-frontend
-   ```
+Sessions expire after one hour of inactivity and are capped to avoid unbounded memory growth. A user can explicitly delete their session.
 
-2. Install frontend dependencies:
-   ```bash
-   npm install
-   ```
+**Important:** this is ephemeral storage, not a production multi-server persistence layer. If the application runs with multiple Django worker processes or multiple replicas, the in-memory session registry is not shared between them. A production version should use a shared store such as Redis and/or persistent document/vector storage.
 
-3. Start the React development server:
-   ```bash
-   npm start
-   ```
+## API
 
-## Usage
+### Upload and index
 
-1. Access the application via http://localhost:3000 in your web browser.
-2. Upload a resume file using the provided interface.
-3. View the extracted information displayed on the screen.
+`POST /api/rag/upload/`
 
-## API Endpoints
+Multipart form-data:
 
-### `/api/extract_resume/`
-- **Method**: POST
-- **Description**: Extracts information from the uploaded resume file.
-- **Request Body**: Form-data with the resume file attached.
-- **Response**: JSON object containing the extracted information.
+`resume=<PDF or DOCX>`
 
+Response:
 
-Important Note on spaCy Compatibility
-⚠️ Warning: This project uses spaCy for natural language processing. spaCy models are version-specific and may not be compatible across different versions of spaCy. Please ensure you're using the correct version of spaCy and its corresponding model as specified in the requirements.txt file.
-If you encounter any issues related to spaCy models, try the following steps:
+```json
+{
+  "session_id": "...",
+  "filename": "candidate.pdf",
+  "chunks_indexed": 12,
+  "message": "Resume indexed successfully."
+}
+```
 
-Verify your spaCy version:
-bashCopypython -m spacy info
+### Chat
 
-If needed, download the correct model for your spaCy version:
-bashCopypython -m spacy download en_core_web_sm
+`POST /api/rag/chat/`
 
-If problems persist, consider creating a new virtual environment and reinstalling all dependencies.
+```json
+{
+  "session_id": "...",
+  "question": "What machine learning experience does the candidate have?"
+}
+```
 
-For more information on spaCy compatibility, refer to the official spaCy documentation.
+The response contains the grounded answer and the retrieved chunks used as evidence.
 
-## Testing Strategy
+### Delete session
 
-To ensure reliability, we distinguish between **Smoke Tests** and **Meaningful Correctness Tests** for every core RAG component:
+`DELETE /api/rag/session/<session_id>/`
 
-### 1. Ingestion (`test_ingestion.py`)
-- **Smoke Test**: Checks if `ResumeExtractor` can open a file without crashing and returns a string.
-  - *Proves*: The file exists, the PDF/DOCX library is installed, and basic reading works.
-  - *Does NOT Prove*: The extracted text is accurate, cleanly formatted, or complete.
-- **Correctness Test** (To be implemented): Ingest a dummy resume with a known expected string (e.g., "John Doe") and assert that the exact string is present in the output.
-  - *Proves*: Text is extracted cleanly without mangling characters or dropping essential content.
+## Setup
 
-### 2. Chunking (`test_chunking.py`)
-- **Smoke Test**: Runs the chunking algorithm on a sample sentence and ensures it returns a list of strings without crashing (e.g., catching `MemoryError`).
-  - *Proves*: The loop terminates, and it returns a list.
-  - *Does NOT Prove*: The chunks overlap correctly or respect boundaries.
-- **Correctness Test** (To be implemented): Pass a specific 100-character string with `chunk_size=50` and `overlap=10`. Assert that exactly 3 chunks are produced, and that the overlap between Chunk 1 and Chunk 2 is exactly the last 10 characters of Chunk 1.
-  - *Proves*: The sliding window logic mathematically preserves context as designed.
+Python 3.12 is recommended.
 
-### 3. Embeddings (`test_embeddings.py`)
-- **Smoke Test**: Loads the `sentence-transformers` model and passes a dummy chunk.
-  - *Proves*: The model is downloaded, torch is installed, and the tensor shape matches expected dimensions (e.g., `(3, 384)`).
-  - *Does NOT Prove*: The embeddings are semantically meaningful.
-- **Correctness Test** (To be implemented): Pass three chunks: A ("I love Python"), B ("I write Python code"), and C ("The sky is blue"). Compute similarity and assert that similarity(A, B) > similarity(A, C).
-  - *Proves*: The model actually groups semantically related concepts closer in vector space.
+Create/activate the virtual environment and install dependencies:
 
-### 4. Vector Retrieval
-- **Smoke Test**: Insert 5 vectors and query for Top-2. Assert that exactly 2 vectors are returned.
-  - *Proves*: The similarity search loop doesn't crash and returns the requested `k`.
-  - *Does NOT Prove*: It retrieved the *most* similar vectors.
-- **Correctness Test** (To be implemented): Insert known vectors (e.g., `[1,0]`, `[0,1]`) and query with `[0.9, 0.1]`. Assert that `[1,0]` is retrieved first based on cosine similarity logic.
-  - *Proves*: The math for cosine similarity and sorting is correct.
+```powershell
+.\venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
+
+If your Windows certificate store is required for Python HTTPS connections, the application initializes `truststore` before Hugging Face/Gemini HTTP clients are created.
+
+Copy `.env.example` to `.env` and set your Gemini key:
+
+```
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+Never commit `.env`.
+
+Run Django:
+
+```powershell
+python manage.py runserver
+```
+
+Run React separately:
+
+```powershell
+cd resume-frontend
+npm install
+npm start
+```
+
+Then open `http://localhost:3000`.
+
+## What this project demonstrates
+
+- document ingestion
+- chunking and overlap
+- dense embeddings
+- cosine similarity retrieval
+- explicit RAG prompt construction
+- grounding and refusal when evidence is missing
+- LLM API integration
+- session-scoped ephemeral RAG state
+- Django REST API design
+- React client integration
+- testable separation between retrieval, prompting, and generation
+
+## Current limitations
+
+- NumPy retrieval is intentionally simple and does not scale to large corpora.
+- Embeddings run in the Django application process.
+- Session state is process-local and ephemeral.
+- A single resume is indexed per session.
+- Scanned/image-only PDFs require OCR, which is not implemented yet.
+- Gemini requires a valid API key and subject to the provider's current quotas/model availability.
+
+## Testing
+
+Core RAG components include unit tests that use fake embedders/retrievers/LLMs where possible, so tests do not require Gemini API calls.
+
+Before calling the project complete locally, test the real path:
+
+1. Start Django.
+2. Start React.
+3. Upload a real PDF/DOCX resume.
+4. Confirm a non-zero chunk count.
+5. Ask a question whose answer is explicitly present.
+6. Inspect the returned retrieved chunks.
+7. Ask a question not supported by the resume and confirm the assistant says the information is unavailable.
+8. Upload a second resume in a fresh session and verify its retrieval is isolated from the first session.
+9. Delete the session and verify subsequent chat returns 404.
+
+## Next optimization
+
+Once the end-to-end behavior is understood and tested, FAISS can replace the NumPy vector store without changing the higher-level RAG flow.
