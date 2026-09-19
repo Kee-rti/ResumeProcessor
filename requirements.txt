@@ -64,6 +64,7 @@ requests==2.32.3
 rich==13.8.1
 rpds-py==0.20.0
 scipy==1.14.1
+sentence-transformers==3.1.1
 setuptools==74.1.2
 shellingham==1.5.4
 six==1.16.0
