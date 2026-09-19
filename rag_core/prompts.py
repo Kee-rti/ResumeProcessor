@@ -16,26 +16,38 @@ Keep answers concise and directly answer the user's question.
 
 
 def build_rag_prompt(
-    question: str, retrieved_chunks: List[Tuple[float, str]]
+    question: str,
+    retrieved_chunks: List[Tuple[float, str]],
+    chat_history: List[dict] | None = None,
 ) -> str:
-    """Build the generation prompt from retrieved resume evidence."""
+    """Build a grounded generation prompt with optional short chat context."""
     if not question or not question.strip():
         raise ValueError("Question must not be empty.")
 
     if not retrieved_chunks:
         context = "[No relevant resume context was retrieved.]"
     else:
-        context_parts = []
-        for i, (score, chunk) in enumerate(retrieved_chunks, start=1):
-            context_parts.append(
-                f"[Chunk {i} | similarity={score:.4f}]\n{chunk}"
-            )
+        context_parts = [
+            f"[Chunk {i} | similarity={score:.4f}]\n{chunk}"
+            for i, (score, chunk) in enumerate(retrieved_chunks, start=1)
+        ]
         context = "\n\n".join(context_parts)
+
+    history = ""
+    if chat_history:
+        history_parts = []
+        for message in chat_history[-6:]:
+            role = message.get("role", "unknown")
+            content = message.get("content", "").strip()
+            if content:
+                history_parts.append(f"{role}: {content}")
+        if history_parts:
+            history = "Recent conversation:\n" + "\n".join(history_parts) + "\n\n"
 
     return f"""Resume context:
 {context}
 
-User question:
+{history}User question:
 {question.strip()}
 
 Answer the question using only the resume context above.
