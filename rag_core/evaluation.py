@@ -1,48 +1,50 @@
+from dataclasses import dataclass
 from typing import List, Tuple
 
 from .retrieval import Retriever
 
 
+@dataclass(frozen=True)
+class RetrievalExample:
+    question: str
+    relevant_chunk: str
+
+
 def evaluate_retrieval(
     retriever: Retriever,
-    questions: List[Tuple[str, List[str]]],
+    examples: List[RetrievalExample],
     top_k: int = 3,
 ) -> dict:
-    """
-    Evaluate retrieval against a tiny hand-labelled test set.
+    """Evaluate whether the expected chunk is returned in the top-k results."""
+    if not examples:
+        raise ValueError("examples must not be empty")
+    if top_k < 1:
+        raise ValueError("top_k must be at least 1")
 
-    questions:
-      [(question, [expected_substring_1, ...]), ...]
-    """
-    if not questions:
-        raise ValueError("questions must not be empty")
-
-    passed = 0
+    hits = 0
     results = []
 
-    for question, expected_terms in questions:
-        retrieved = retriever.retrieve(question, top_k=top_k)
-        retrieved_text = "
-".join(chunk.lower() for _, chunk in retrieved)
+    for example in examples:
+        retrieved = retriever.retrieve(example.question, top_k=top_k)
+        chunks = [chunk for _, chunk in retrieved]
 
-        hit = bool(expected_terms) and all(
-            term.lower() in retrieved_text for term in expected_terms
-        )
+        hit = example.relevant_chunk in chunks
+        if hit:
+            hits += 1
 
         results.append(
             {
-                "question": question,
-                "expected_terms": expected_terms,
+                "question": example.question,
+                "relevant_chunk": example.relevant_chunk,
+                "retrieved_chunks": chunks,
                 "hit": hit,
                 "scores": [round(score, 4) for score, _ in retrieved],
             }
         )
 
-        passed += int(hit)
-
     return {
-        "questions": len(questions),
-        "passed": passed,
-        "retrieval_hit_rate": passed / len(questions),
+        "questions": len(examples),
+        "hits": hits,
+        "recall_at_k": hits / len(examples),
         "results": results,
     }
