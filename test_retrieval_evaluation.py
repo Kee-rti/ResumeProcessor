@@ -1,6 +1,6 @@
 import numpy as np
 
-from rag_core.evaluation import evaluate_retrieval
+from rag_core.evaluation import RetrievalExample, evaluate_retrieval
 from rag_core.retrieval import Retriever
 
 
@@ -25,19 +25,22 @@ class FakeVectorStore:
         q = query_embedding.flatten()
         scored = []
         for chunk, vector in self.docs:
-            score = float(np.dot(q, vector) / (np.linalg.norm(q) * np.linalg.norm(vector)))
+            score = float(
+                np.dot(q, vector)
+                / (np.linalg.norm(q) * np.linalg.norm(vector))
+            )
             scored.append((score, chunk))
         scored.sort(reverse=True, key=lambda x: x[0])
         return scored[:top_k]
 
 
-def test_retrieval_evaluation_hit_rate():
+def test_retrieval_evaluation_recall_at_k():
     embedder = FakeEmbedder()
     store = FakeVectorStore()
     store.add_documents(
         [
-            "Built machine learning services with Python.",
-            "Created dashboards with React.",
+            "Python is used for backend services.",
+            "React is used for frontend interfaces.",
         ],
         np.array([[1, 0], [0, 1]], dtype=np.float32),
     )
@@ -47,12 +50,18 @@ def test_retrieval_evaluation_hit_rate():
     report = evaluate_retrieval(
         retriever,
         [
-            ("What Python work did the candidate do?", ["Python"]),
-            ("What did the candidate build with React?", ["React"]),
+            RetrievalExample(
+                "Which language is used for backend services?",
+                "Python is used for backend services.",
+            ),
+            RetrievalExample(
+                "Which library is used for frontend interfaces?",
+                "React is used for frontend interfaces.",
+            ),
         ],
         top_k=1,
     )
 
     assert report["questions"] == 2
-    assert report["passed"] == 2
-    assert report["retrieval_hit_rate"] == 1.0
+    assert report["hits"] == 2
+    assert report["recall_at_k"] == 1.0
