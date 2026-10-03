@@ -28,7 +28,7 @@ class GeminiLLM:
             )
 
         self.model = model or os.getenv(
-            "GEMINI_MODEL", "gemini-2.5-flash-lite"
+            "GEMINI_MODEL", "gemini-3.5-flash-lite"
         )
         self.client = genai.Client(api_key=self.api_key)
 
