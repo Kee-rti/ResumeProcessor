@@ -63,10 +63,10 @@ class UploadResumeForRAGView(APIView):
                 },
                 status=status.HTTP_201_CREATED,
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("RAG resume indexing failed.")
             return Response(
-                {"error": f"Failed to index resume: {exc}"},
+                {"error": "Failed to index resume. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -124,10 +124,10 @@ class RAGChatView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("RAG chat request failed.")
             return Response(
-                {"error": f"Failed to generate answer: {exc}"},
+                {"error": "Failed to generate answer. Please try again."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
