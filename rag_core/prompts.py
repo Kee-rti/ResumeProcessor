@@ -1,6 +1,11 @@
 from typing import List, Tuple
 
 
+INSUFFICIENT_EVIDENCE_RESPONSE = (
+    "I couldn't find sufficiently relevant evidence in the resume to answer that."
+)
+
+
 SYSTEM_INSTRUCTION = """
 You are a resume question-answering assistant.
 
