@@ -2,6 +2,7 @@ import os
 from functools import lru_cache
 
 from .chunking import TextChunker
+from .config import parse_min_similarity_score
 from .embeddings import Embedder
 from .llm_gemini import GeminiLLM
 from .rag_pipeline import RAGPipeline
@@ -31,16 +32,10 @@ def build_rag_pipeline(text: str, top_k: int = 3) -> tuple[RAGPipeline, int]:
     if not text or not text.strip():
         raise ValueError("Resume text is empty.")
 
-    raw_threshold = os.getenv("RAG_MIN_SIMILARITY_SCORE", "0.45").strip()
-    try:
-        min_similarity_score = float(raw_threshold or "0.45")
-    except ValueError as exc:
-        raise ValueError(
-            "RAG_MIN_SIMILARITY_SCORE must be a number between -1 and 1."
-        ) from exc
-
-    if not -1.0 <= min_similarity_score <= 1.0:
-        raise ValueError("RAG_MIN_SIMILARITY_SCORE must be between -1 and 1.")
+    # Validate configuration before loading the embedding model or indexing.
+    min_similarity_score = parse_min_similarity_score(
+        os.getenv("RAG_MIN_SIMILARITY_SCORE")
+    )
 
     chunker = TextChunker()
     chunks = chunker.chunk_text(text)

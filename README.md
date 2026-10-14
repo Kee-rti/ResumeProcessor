@@ -53,11 +53,18 @@ question
   → question embedding
   → cosine similarity against indexed chunks
   → top-k chunks
-  → Gemini prompt
+  → minimum similarity threshold
+  → Gemini prompt (only if relevant matches remain)
   → answer
 ```
 
 The API also returns the retrieved chunks and similarity scores so the retrieval step can be inspected while learning/debugging.
+
+### Retrieval threshold
+
+`RAG_MIN_SIMILARITY_SCORE` sets the minimum cosine-similarity score for a retrieved chunk to be included in the generation prompt. The initial default is `0.45`. If no retrieved chunk meets the cutoff, the pipeline returns an insufficient-evidence response without calling Gemini.
+
+This score is **not** an LLM confidence percentage or a guarantee that the final answer is correct. The cutoff is an initial value, not a calibrated threshold. Tune it against labelled examples for your resume corpus and track both false accepts and false abstentions. Invalid, non-finite, or out-of-range values fail fast.
 
 ## Session model
 
@@ -105,7 +112,7 @@ Response:
 }
 ```
 
-The response contains the grounded answer and the retrieved chunks used as evidence.
+The response contains the grounded answer and the retrieved chunks used as evidence. If all retrieved chunks score below the cutoff, the answer is an insufficient-evidence response with an empty source list.
 
 ### Delete session
 
@@ -124,14 +131,15 @@ python -m pip install -r requirements.txt
 
 If your Windows certificate store is required for Python HTTPS connections, the application initializes `truststore` before Hugging Face/Gemini HTTP clients are created.
 
-Copy `.env.example` to `.env` and set your Gemini key:
+Copy `.env.example` from the repository root to `.env` in the repository root and set your Gemini key and retrieval cutoff:
 
-```
+```dotenv
 GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODEL=gemini-3.5-flash-lite
+RAG_MIN_SIMILARITY_SCORE=0.45
 ```
 
-Never commit `.env`.
+The Django settings also support an existing `.env` inside the `ResumeProcessor/` project directory; if both exist, the project-local file takes precedence. Never commit either `.env` file.
 
 Run Django:
 
@@ -169,12 +177,20 @@ Then open `http://localhost:3000`.
 - Embeddings run in the Django application process.
 - Session state is process-local and ephemeral.
 - A single resume is indexed per session.
+- The retrieval cutoff is an initial default and has not yet been calibrated on a representative labelled dataset.
+- Passing the similarity guard does not prove that the retrieved text supports every generated claim.
 - Scanned/image-only PDFs require OCR, which is not implemented yet.
 - Gemini requires a valid API key and subject to the provider's current quotas/model availability.
 
 ## Testing
 
 Core RAG components include unit tests that use fake embedders/retrievers/LLMs where possible, so tests do not require Gemini API calls.
+
+Run the focused unit tests from the repository root:
+
+```powershell
+python -m pytest test_config.py test_prompts.py test_rag_pipeline.py test_retrieval.py test_retrieval_evaluation.py
+```
 
 Before calling the project complete locally, test the real path:
 
