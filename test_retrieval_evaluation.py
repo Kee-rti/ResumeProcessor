@@ -21,6 +21,16 @@ class FakeVectorStore:
     def add_documents(self, chunks, embeddings):
         self.docs = list(zip(chunks, embeddings))
 
+    def find_chunks_containing(self, text):
+        normalized_text = " ".join(text.casefold().split())
+        if not normalized_text:
+            return []
+        return [
+            chunk
+            for chunk, _ in self.docs
+            if normalized_text in " ".join(chunk.casefold().split())
+        ]
+
     def search(self, query_embedding, top_k=3):
         q = query_embedding.flatten()
         scored = []
@@ -34,7 +44,7 @@ class FakeVectorStore:
         return scored[:top_k]
 
 
-def test_retrieval_evaluation_recall_at_k():
+def _make_retriever():
     embedder = FakeEmbedder()
     store = FakeVectorStore()
     store.add_documents(
@@ -44,18 +54,19 @@ def test_retrieval_evaluation_recall_at_k():
         ],
         np.array([[1, 0], [0, 1]], dtype=np.float32),
     )
+    return Retriever(embedder, store)
 
-    retriever = Retriever(embedder, store)
 
+def test_retrieval_evaluation_recall_at_k():
     report = evaluate_retrieval(
-        retriever,
+        _make_retriever(),
         [
             RetrievalExample(
-                "Which language is used for backend services?",
+                "Which language is used for Python backend services?",
                 "Python is used for backend services.",
             ),
             RetrievalExample(
-                "Which library is used for frontend interfaces?",
+                "Which library is used for React frontend interfaces?",
                 "React is used for frontend interfaces.",
             ),
         ],
@@ -65,3 +76,63 @@ def test_retrieval_evaluation_recall_at_k():
     assert report["questions"] == 2
     assert report["hits"] == 2
     assert report["recall_at_k"] == 1.0
+    assert report["diagnosis_counts"] == {
+        "retrieved_in_top_k": 2,
+        "indexed_but_missed_top_k": 0,
+        "not_in_index": 0,
+    }
+
+
+def test_diagnosis_detects_gold_evidence_missing_from_index():
+    report = evaluate_retrieval(
+        _make_retriever(),
+        [
+            RetrievalExample(
+                "What AWS experience does the candidate have?",
+                "Candidate deployed services on AWS.",
+            )
+        ],
+        top_k=1,
+    )
+
+    result = report["results"][0]
+    assert result["hit"] is False
+    assert result["diagnosis"] == "not_in_index"
+    assert result["indexed_matches"] == []
+    assert report["diagnosis_counts"]["not_in_index"] == 1
+
+
+def test_diagnosis_detects_gold_evidence_indexed_but_outside_top_k():
+    report = evaluate_retrieval(
+        _make_retriever(),
+        [
+            RetrievalExample(
+                "What Python backend experience does the candidate have?",
+                "React is used for frontend interfaces.",
+            )
+        ],
+        top_k=1,
+    )
+
+    result = report["results"][0]
+    assert result["hit"] is False
+    assert result["diagnosis"] == "indexed_but_missed_top_k"
+    assert result["indexed_matches"] == ["React is used for frontend interfaces."]
+    assert report["diagnosis_counts"]["indexed_but_missed_top_k"] == 1
+
+
+def test_gold_evidence_can_match_inside_a_larger_indexed_chunk():
+    report = evaluate_retrieval(
+        _make_retriever(),
+        [
+            RetrievalExample(
+                "What Python backend experience does the candidate have?",
+                "used for backend services.",
+            )
+        ],
+        top_k=1,
+    )
+
+    result = report["results"][0]
+    assert result["hit"] is True
+    assert result["diagnosis"] == "retrieved_in_top_k"

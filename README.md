@@ -182,6 +182,16 @@ Then open `http://localhost:3000`.
 - Scanned/image-only PDFs require OCR, which is not implemented yet.
 - Gemini requires a valid API key and subject to the provider's current quotas/model availability.
 
+## Diagnosing retrieval misses
+
+`evaluate_retrieval()` reports why a labelled gold evidence span was missed:
+
+- `not_in_index`: no indexed chunk contains the gold span; inspect extraction and chunking.
+- `indexed_but_missed_top_k`: the span exists in an indexed chunk, but that chunk was not retrieved; inspect the query, embeddings and top-k.
+- `retrieved_in_top_k`: the gold span appears within a returned chunk.
+
+The match is case- and whitespace-insensitive, and the full gold span must fit inside one indexed chunk. If chunking splits a gold span across chunks, the diagnostic reports `not_in_index`, directing you to inspect chunk boundaries. This diagnoses only the index-to-top-k stage; it does not detect reranker drops or LLM failures.
+
 ## Testing
 
 Core RAG components include unit tests that use fake embedders/retrievers/LLMs where possible, so tests do not require Gemini API calls.
